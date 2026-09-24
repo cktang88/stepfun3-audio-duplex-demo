@@ -1,0 +1,11 @@
+.env*
+!.env.example
+.envrc
+.npmrc
+node_modules/
+.DS_Store
+*.log
+*.pem
+*.key
+*.p12
+*.pfx

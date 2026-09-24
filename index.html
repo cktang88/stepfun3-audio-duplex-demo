@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f3f5f2" />
+    <title>StepFun · Live voice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="StepFun home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>stepfun<span class="brand-dot">.</span></span></a>
+        <div class="top-meta"><span class="live-dot"></span><span>REALTIME PLAYGROUND</span><span class="meta-divider"></span><span>STEP AUDIO 3</span></div>
+        <a class="docs-link" href="https://platform.stepfun.ai/docs/en/api-reference/realtime/chat" target="_blank" rel="noreferrer">API docs <span aria-hidden="true">↗</span></a>
+      </header>
+      <section class="intro">
+        <div class="eyebrow"><span class="eyebrow-line"></span> VOICE, IN REAL TIME</div>
+        <h1>A conversation<br />without the <span>wait.</span></h1>
+        <p class="intro-copy">Speak naturally. StepAudio listens while it talks, picks up when you jump in, and keeps the conversation moving.</p>
+      </section>
+      <section class="console" aria-label="Realtime audio demo">
+        <div class="console-head"><div class="console-title"><span class="status-led" id="status-led"></span><span id="status-label">Ready when you are</span></div><button class="icon-button" id="settings-toggle" aria-label="Show voice settings" aria-expanded="false" title="Voice settings">☷</button></div>
+        <div class="visual-stage" id="visual-stage"><div class="orb-wrap" id="orb-wrap"><div class="orb-glow"></div><div class="orb"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div><div class="stage-caption" id="stage-caption">Your voice is the interface</div><div class="stage-hint" id="stage-hint">Start a session and say hello</div></div>
+        <div class="controls"><button class="start-button" id="start-button"><span class="mic-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-5a3.5 3.5 0 0 0-7 0v5A3.5 3.5 0 0 0 12 15Z"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-3 0h6"/></svg></span><span id="button-label">Start conversation</span></button><div class="control-note"><span class="lock-icon" aria-hidden="true">◈</span> Your mic audio streams directly to StepFun</div></div>
+        <div class="settings-panel" id="settings-panel" hidden>
+          <section class="settings-section" aria-labelledby="basic-settings-title">
+            <h2 id="basic-settings-title">Basic options</h2>
+            <label for="voice-select">VOICE</label>
+            <select id="voice-select">
+              <option value="soft-spoken-gentleman">Soft spoken</option>
+              <option value="magnetic-voiced-male">Magnetic</option>
+              <option value="vibrant-youth">Vibrant youth</option>
+              <option value="lively-girl">Lively</option>
+              <option value="livelybreezy-female">Breezy</option>
+              <option value="elegantgentle-female">Elegant</option>
+              <option value="zixinnansheng">Confident</option>
+            </select>
+            <label for="instructions">ASSISTANT STYLE</label>
+            <textarea id="instructions" rows="3" maxlength="500">You are a warm, helpful voice assistant. Keep replies natural and concise.</textarea>
+            <p class="settings-note">Voice locks for the session. Style instructions can change while you talk.</p>
+          </section>
+          <details class="advanced-settings">
+            <summary>Advanced audio options</summary>
+            <p class="settings-note">These tune StepFun’s server-side speech detection. Changes apply during the current session.</p>
+            <label for="prefix-padding">SPEECH START BUFFER <span>milliseconds</span></label>
+            <input id="prefix-padding" type="number" min="0" step="50" value="500" />
+            <label for="silence-duration">END OF SPEECH PAUSE <span>milliseconds</span></label>
+            <input id="silence-duration" type="number" min="0" step="50" value="650" />
+            <label for="energy-threshold">SPEECH SENSITIVITY <span>0–5000</span></label>
+            <input id="energy-threshold" type="number" min="0" max="5000" step="100" value="2500" />
+            <p class="settings-note">Lower sensitivity values make speech easier to detect; the documented default is 2500.</p>
+          </details>
+        </div>
+        <div class="conversation" id="conversation" aria-live="polite" aria-label="Conversation transcript"></div>
+        <div class="console-foot"><span>FULL DUPLEX AUDIO</span><span class="foot-wave">● <i>●</i> ●</span><span>PCM16 · 24 KHZ</span></div>
+      </section>
+      <footer class="page-foot"><span>Built on StepAudio 3 Realtime</span><span>One socket. Both directions.</span></footer>
+    </main>
+  </body>
+</html>
