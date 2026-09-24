@@ -55,7 +55,7 @@
             <p class="settings-note">StepFun Realtime supports Chinese and English. “Match conversation” follows the language you use.</p>
             <label for="instructions">ASSISTANT STYLE</label>
             <textarea id="instructions" rows="3" maxlength="500">You are a warm, helpful voice assistant. Keep replies natural and concise.</textarea>
-            <p class="settings-note">Voice locks for the session. Language and style can change while you talk.</p>
+            <p class="settings-note">Changing any option clears the transcript and starts a fresh conversation.</p>
           </section>
           <details class="advanced-settings">
             <summary>
@@ -63,7 +63,7 @@
               <span class="advanced-summary-action"><span class="summary-show">Show controls</span><span class="summary-hide">Hide controls</span><span class="advanced-chevron" aria-hidden="true">⌄</span></span>
             </summary>
             <h3 class="settings-subheading">StepFun speech detection</h3>
-            <p class="settings-note">These tune StepFun’s server-side speech detection. Changes apply during the current session.</p>
+            <p class="settings-note">These tune StepFun’s server-side speech detection.</p>
             <label for="prefix-padding">SPEECH START BUFFER <span>milliseconds</span></label>
             <input id="prefix-padding" type="number" min="0" step="50" value="500" />
             <label for="silence-duration">END OF SPEECH PAUSE <span>milliseconds</span></label>
@@ -72,7 +72,7 @@
             <input id="energy-threshold" type="number" min="0" max="5000" step="100" value="2500" />
             <p class="settings-note">Lower sensitivity values make speech easier to detect; the documented default is 2500.</p>
             <h3 class="settings-subheading">Local audio</h3>
-            <p class="settings-note">Microphone processing options take effect the next time you start a session.</p>
+            <p class="settings-note">Changing any option clears the transcript and starts a fresh conversation.</p>
             <label class="toggle-option" for="echo-cancellation"><input id="echo-cancellation" type="checkbox" checked />Echo cancellation</label>
             <label class="toggle-option" for="noise-suppression"><input id="noise-suppression" type="checkbox" checked />Noise suppression</label>
             <label class="toggle-option" for="auto-gain-control"><input id="auto-gain-control" type="checkbox" checked />Automatic gain control</label>

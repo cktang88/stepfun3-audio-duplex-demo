@@ -19,59 +19,83 @@ const energyThresholdInput = $("#energy-threshold");
 const echoCancellationInput = $("#echo-cancellation");
 const noiseSuppressionInput = $("#noise-suppression");
 const autoGainControlInput = $("#auto-gain-control");
-const connectionOptions = [modelSelect, echoCancellationInput, noiseSuppressionInput, autoGainControlInput];
 const outputVolumeInput = $("#output-volume");
 const outputVolumeValue = $("#output-volume-value");
+const settingControls = [modelSelect, voiceSelect, replyLanguageInput, instructionsInput, prefixPaddingInput, silenceDurationInput, energyThresholdInput, echoCancellationInput, noiseSuppressionInput, autoGainControlInput, outputVolumeInput];
 let socket, context, stream, processor, source, silentGain, outputGain;
 let nextPlaybackTime = 0;
 let activeSources = new Set();
 let currentAssistantMessage;
 let stoppedByUser = false;
 let showedError = false;
-let sessionConfigured = false;
+let sessionRequested = false;
+let sessionGeneration = 0;
 
 settingsToggle.addEventListener("click", () => {
   const expanded = settingsToggle.getAttribute("aria-expanded") === "true";
   settingsToggle.setAttribute("aria-expanded", String(!expanded));
   settingsPanel.hidden = expanded;
 });
-button.addEventListener("click", () => socket || stream ? stopConversation() : startConversation());
-replyLanguageInput.addEventListener("change", applyInstructions);
-instructionsInput.addEventListener("change", applyInstructions);
+button.addEventListener("click", () => sessionRequested ? stopConversation() : startConversation());
+for (const input of [modelSelect, voiceSelect, replyLanguageInput, echoCancellationInput, noiseSuppressionInput, autoGainControlInput]) {
+  input.addEventListener("change", restartConversationForSettings);
+}
+instructionsInput.addEventListener("input", noteSettingsEditing);
+instructionsInput.addEventListener("change", restartConversationForSettings);
 outputVolumeInput.addEventListener("input", applyPlaybackVolume);
 for (const input of [prefixPaddingInput, silenceDurationInput, energyThresholdInput]) {
-  input.addEventListener("change", applyVadSettings);
+  input.addEventListener("input", noteSettingsEditing);
+  input.addEventListener("change", restartConversationForSettings);
 }
+outputVolumeInput.addEventListener("change", restartConversationForSettings);
 
 async function startConversation() {
+  const generation = ++sessionGeneration;
+  sessionRequested = true;
   stoppedByUser = false;
   showedError = false;
-  sessionConfigured = false;
   button.disabled = true;
+  setSettingsDisabled(true);
   updateStatus("Connecting…", "busy", "Setting up your audio session", "Please allow microphone access if asked", "");
   try {
-    setConnectionOptionsDisabled(true);
-    stream = await navigator.mediaDevices.getUserMedia({ audio: {
+    const acquiredStream = await navigator.mediaDevices.getUserMedia({ audio: {
       channelCount: 1,
       echoCancellation: echoCancellationInput.checked,
       noiseSuppression: noiseSuppressionInput.checked,
       autoGainControl: autoGainControlInput.checked,
     } });
+    if (generation !== sessionGeneration) {
+      acquiredStream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    stream = acquiredStream;
     context = new AudioContext({ sampleRate: RATE });
     await context.resume();
     outputGain = context.createGain();
     outputGain.connect(context.destination);
     applyPlaybackVolume();
-    socket = new WebSocket(`${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/realtime?model=${encodeURIComponent(modelSelect.value)}`);
-    socket.addEventListener("open", () => updateStatus("Connected · configuring voice", "busy", "Almost there", "Preparing live audio", ""));
-    socket.addEventListener("message", handleServerMessage);
-    socket.addEventListener("error", () => showError("The realtime connection failed. Check that the local server is running."));
-    socket.addEventListener("close", () => {
+    const activeSocket = new WebSocket(`${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/realtime?model=${encodeURIComponent(modelSelect.value)}`);
+    socket = activeSocket;
+    const isCurrentSession = () => generation === sessionGeneration && socket === activeSocket;
+    activeSocket.addEventListener("open", () => {
+      if (isCurrentSession()) updateStatus("Connected · configuring voice", "busy", "Almost there", "Preparing live audio", "");
+    });
+    activeSocket.addEventListener("message", (message) => {
+      if (isCurrentSession()) handleServerMessage(message);
+    });
+    activeSocket.addEventListener("error", () => {
+      if (isCurrentSession()) showError("The realtime connection failed. Check that the local server is running.");
+    });
+    activeSocket.addEventListener("close", () => {
+      if (!isCurrentSession()) return;
       if (!stoppedByUser && !showedError) showError("The connection closed. Start a new conversation to try again.");
       cleanupAudio();
       socket = undefined;
+      sessionRequested = false;
     });
   } catch (error) {
+    if (generation !== sessionGeneration) return;
+    sessionRequested = false;
     showError(error.name === "NotAllowedError" ? "Microphone permission was blocked. Allow access in your browser settings, then try again." : `Could not start audio: ${error.message}`);
     cleanupAudio();
     socket = undefined;
@@ -94,13 +118,14 @@ function handleServerMessage(message) {
         socket.close(1000, "Invalid advanced audio settings");
         break;
       }
-      sessionConfigured = true;
-      voiceSelect.disabled = true;
       send({ type: "session.update", session });
       break;
     }
     case "session.updated":
-      if (!processor) startMicrophoneStream();
+      if (!processor) {
+        setSettingsDisabled(false);
+        startMicrophoneStream();
+      }
       break;
     case "input_audio_buffer.speech_started":
       stopScheduledPlayback();
@@ -140,7 +165,6 @@ function startMicrophoneStream() {
   processor.onaudioprocess = (event) => {
     if (socket?.readyState === WebSocket.OPEN) send({ type: "input_audio_buffer.append", audio: resampleAndEncode(event.inputBuffer.getChannelData(0), context.sampleRate) });
   };
-  voiceSelect.disabled = true;
   button.disabled = false;
   button.classList.add("stop");
   $("#button-label").textContent = "End conversation";
@@ -207,16 +231,44 @@ function getInstructions() {
   if (language === "auto") return style;
   return `Respond in ${language} by default. If the user asks for another language, follow that request.\n\n${style}`;
 }
-function applyInstructions() {
-  if (sessionConfigured) send({ type: "session.update", session: { instructions: getInstructions() } });
-}
 function applyPlaybackVolume() {
   const value = outputVolumeInput.valueAsNumber;
   outputVolumeValue.value = `${value}%`;
   if (outputGain && context) outputGain.gain.setTargetAtTime(value / 100, context.currentTime, 0.015);
 }
-function setConnectionOptionsDisabled(disabled) {
-  for (const input of connectionOptions) input.disabled = disabled;
+function setSettingsDisabled(disabled) {
+  for (const input of settingControls) input.disabled = disabled;
+}
+function clearConversation() {
+  conversation.replaceChildren();
+  currentAssistantMessage = undefined;
+}
+function noteSettingsEditing() {
+  clearConversation();
+  if (!sessionRequested) {
+    updateStatus("Settings ready", "", "Your voice is the interface", "Start a conversation to try your settings", "");
+    return;
+  }
+  updateStatus("Finish editing to apply", "busy", "Your conversation was cleared", "The session will restart when you finish this field", "");
+}
+function restartConversationForSettings() {
+  if (!getTurnDetection()) {
+    [prefixPaddingInput, silenceDurationInput, energyThresholdInput].find((input) => !input.checkValidity())?.reportValidity();
+    updateStatus("Settings need attention", "", "Check the highlighted value", "The current audio session is still running", "");
+    return;
+  }
+  clearConversation();
+  if (!sessionRequested) {
+    updateStatus("Settings ready", "", "Your voice is the interface", "Start a conversation to try your settings", "");
+    return;
+  }
+  const previousSocket = socket;
+  ++sessionGeneration;
+  socket = undefined;
+  cleanupAudio();
+  if (previousSocket?.readyState === WebSocket.OPEN) previousSocket.close(1000, "Settings changed");
+  updateStatus("Restarting…", "busy", "Applying your settings", "Starting a fresh conversation", "");
+  startConversation();
 }
 function getTurnDetection() {
   const prefixPadding = readNonnegativeInteger(prefixPaddingInput);
@@ -238,14 +290,6 @@ function readNonnegativeInteger(input, maximum = Infinity) {
   }
   input.setCustomValidity("");
   return value;
-}
-function applyVadSettings() {
-  const turnDetection = getTurnDetection();
-  if (turnDetection && sessionConfigured) {
-    send({ type: "session.update", session: { turn_detection: turnDetection } });
-  } else if (!turnDetection) {
-    [prefixPaddingInput, silenceDurationInput, energyThresholdInput].find((input) => !input.checkValidity())?.reportValidity();
-  }
 }
 function showAdvancedSettingsError() {
   settingsPanel.hidden = false;
@@ -301,17 +345,18 @@ function cleanupAudio() {
   stopScheduledPlayback();
   context?.close();
   processor = source = silentGain = outputGain = stream = context = undefined;
-  sessionConfigured = false;
-  setConnectionOptionsDisabled(false);
-  voiceSelect.disabled = false;
+  setSettingsDisabled(false);
   button.classList.remove("stop");
   $("#button-label").textContent = "Start conversation";
   button.disabled = false;
 }
 function stopConversation() {
+  sessionRequested = false;
+  ++sessionGeneration;
   stoppedByUser = true;
-  if (socket?.readyState === WebSocket.OPEN) socket.close(1000, "Conversation ended");
-  cleanupAudio();
+  const previousSocket = socket;
   socket = undefined;
+  if (previousSocket?.readyState === WebSocket.OPEN) previousSocket.close(1000, "Conversation ended");
+  cleanupAudio();
   updateStatus("Ready when you are", "", "Your voice is the interface", "Start a session and say hello", "");
 }
