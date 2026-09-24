@@ -10,6 +10,7 @@ const conversation = $("#conversation");
 const settingsToggle = $("#settings-toggle");
 const settingsPanel = $("#settings-panel");
 const voiceSelect = $("#voice-select");
+const replyLanguageInput = $("#reply-language");
 const instructionsInput = $("#instructions");
 const prefixPaddingInput = $("#prefix-padding");
 const silenceDurationInput = $("#silence-duration");
@@ -28,9 +29,8 @@ settingsToggle.addEventListener("click", () => {
   settingsPanel.hidden = expanded;
 });
 button.addEventListener("click", () => socket || stream ? stopConversation() : startConversation());
-instructionsInput.addEventListener("change", () => {
-  if (sessionConfigured) send({ type: "session.update", session: { instructions: instructionsInput.value.trim() } });
-});
+replyLanguageInput.addEventListener("change", applyInstructions);
+instructionsInput.addEventListener("change", applyInstructions);
 for (const input of [prefixPaddingInput, silenceDurationInput, energyThresholdInput]) {
   input.addEventListener("change", applyVadSettings);
 }
@@ -177,12 +177,21 @@ function getSessionSettings() {
   if (!turnDetection) return null;
   return {
     modalities: ["text", "audio"],
-    instructions: instructionsInput.value.trim(),
+    instructions: getInstructions(),
     voice: voiceSelect.value,
     input_audio_format: "pcm16",
     output_audio_format: "pcm16",
     turn_detection: turnDetection,
   };
+}
+function getInstructions() {
+  const style = instructionsInput.value.trim();
+  const language = replyLanguageInput.value;
+  if (language === "auto") return style;
+  return `Respond in ${language} by default. If the user asks for another language, follow that request.\n\n${style}`;
+}
+function applyInstructions() {
+  if (sessionConfigured) send({ type: "session.update", session: { instructions: getInstructions() } });
 }
 function getTurnDetection() {
   const prefixPadding = readNonnegativeInteger(prefixPaddingInput);

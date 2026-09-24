@@ -29,4 +29,4 @@ Open the localhost URL printed by the server in your browser. Microphone access 
 
 The WebSocket proxy uses the API key on the server side so it is not exposed in the browser.
 
-Open **Voice settings** in the demo to choose a voice and assistant style. **Advanced audio options** exposes StepFun's server VAD start buffer, end-of-speech pause, and speech sensitivity settings. The VAD values can be changed during a session; the voice is fixed for each session.
+Open **Voice settings** in the demo to choose a voice, default reply language, and assistant style. The language defaults to **Match conversation**; choose English or Mandarin Chinese to make it the default, while still allowing the user to ask for another language. StepFun Realtime supports Chinese and English. Language and style changes apply during a session; the voice is fixed for each session. **Advanced audio options** exposes StepFun's server VAD start buffer, end-of-speech pause, and speech sensitivity settings.
