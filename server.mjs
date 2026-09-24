@@ -4,6 +4,8 @@ import { extname, join, normalize } from "node:path";
 import { WebSocket, WebSocketServer } from "ws";
 
 const apiKey = process.env.STEPFUN_API_KEY;
+const defaultModel = "stepaudio-3-realtime-preview";
+const allowedModels = new Set([defaultModel, "stepaudio-2.5-realtime"]);
 if (!apiKey) {
   console.error("STEPFUN_API_KEY is missing. Add it to .env and restart the server.");
   process.exit(1);
@@ -27,15 +29,21 @@ const clients = new WebSocketServer({ noServer: true, maxPayload: 1_000_000 });
 server.on("upgrade", (request, socket, head) => {
   const host = request.headers.host;
   const allowedHosts = new Set([`localhost:${port}`, `127.0.0.1:${port}`]);
-  if (request.url !== "/realtime" || !allowedHosts.has(host) || request.headers.origin !== `http://${host}`) {
+  if (!allowedHosts.has(host) || request.headers.origin !== `http://${host}`) {
     socket.destroy();
     return;
   }
-  clients.handleUpgrade(request, socket, head, (client) => clients.emit("connection", client));
+  const url = new URL(request.url ?? "/", `http://${host}`);
+  const model = url.searchParams.get("model") ?? defaultModel;
+  if (url.pathname !== "/realtime" || !allowedModels.has(model)) {
+    socket.destroy();
+    return;
+  }
+  clients.handleUpgrade(request, socket, head, (client) => clients.emit("connection", client, model));
 });
 
-clients.on("connection", (client) => {
-  const upstream = new WebSocket("wss://api.stepfun.ai/v1/realtime?model=stepaudio-3-realtime-preview", {
+clients.on("connection", (client, model) => {
+  const upstream = new WebSocket(`wss://api.stepfun.ai/v1/realtime?model=${encodeURIComponent(model)}`, {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
   const relay = (from, to) => from.on("message", (message, isBinary) => {

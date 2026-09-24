@@ -15,7 +15,7 @@
     <main class="shell">
       <header class="topbar">
         <a class="brand" href="/" aria-label="StepFun home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>stepfun<span class="brand-dot">.</span></span></a>
-        <div class="top-meta"><span class="live-dot"></span><span>REALTIME PLAYGROUND</span><span class="meta-divider"></span><span>STEP AUDIO 3</span></div>
+        <div class="top-meta"><span class="live-dot"></span><span>REALTIME PLAYGROUND</span><span class="meta-divider"></span><span>STEP AUDIO</span></div>
         <a class="docs-link" href="https://platform.stepfun.ai/docs/en/api-reference/realtime/chat" target="_blank" rel="noreferrer">API docs <span aria-hidden="true">↗</span></a>
       </header>
       <section class="intro">
@@ -30,6 +30,12 @@
         <div class="settings-panel" id="settings-panel" hidden>
           <section class="settings-section" aria-labelledby="basic-settings-title">
             <h2 id="basic-settings-title">Basic options</h2>
+            <label for="model-select">MODEL</label>
+            <select id="model-select">
+              <option value="stepaudio-3-realtime-preview">StepAudio 3 Realtime Preview</option>
+              <option value="stepaudio-2.5-realtime">StepAudio 2.5 Realtime</option>
+            </select>
+            <p class="settings-note">Model access depends on your StepFun account. Choose before starting a session.</p>
             <label for="voice-select">VOICE</label>
             <select id="voice-select">
               <option value="soft-spoken-gentleman">Soft spoken</option>
@@ -52,7 +58,11 @@
             <p class="settings-note">Voice locks for the session. Language and style can change while you talk.</p>
           </section>
           <details class="advanced-settings">
-            <summary>Advanced audio options</summary>
+            <summary>
+              <span>Advanced audio options</span>
+              <span class="advanced-summary-action"><span class="summary-show">Show controls</span><span class="summary-hide">Hide controls</span><span class="advanced-chevron" aria-hidden="true">⌄</span></span>
+            </summary>
+            <h3 class="settings-subheading">StepFun speech detection</h3>
             <p class="settings-note">These tune StepFun’s server-side speech detection. Changes apply during the current session.</p>
             <label for="prefix-padding">SPEECH START BUFFER <span>milliseconds</span></label>
             <input id="prefix-padding" type="number" min="0" step="50" value="500" />
@@ -61,12 +71,19 @@
             <label for="energy-threshold">SPEECH SENSITIVITY <span>0–5000</span></label>
             <input id="energy-threshold" type="number" min="0" max="5000" step="100" value="2500" />
             <p class="settings-note">Lower sensitivity values make speech easier to detect; the documented default is 2500.</p>
+            <h3 class="settings-subheading">Local audio</h3>
+            <p class="settings-note">Microphone processing options take effect the next time you start a session.</p>
+            <label class="toggle-option" for="echo-cancellation"><input id="echo-cancellation" type="checkbox" checked />Echo cancellation</label>
+            <label class="toggle-option" for="noise-suppression"><input id="noise-suppression" type="checkbox" checked />Noise suppression</label>
+            <label class="toggle-option" for="auto-gain-control"><input id="auto-gain-control" type="checkbox" checked />Automatic gain control</label>
+            <label for="output-volume">LOCAL PLAYBACK VOLUME <output id="output-volume-value" for="output-volume">100%</output></label>
+            <input id="output-volume" type="range" min="0" max="100" step="1" value="100" />
           </details>
         </div>
         <div class="conversation" id="conversation" aria-live="polite" aria-label="Conversation transcript"></div>
         <div class="console-foot"><span>FULL DUPLEX AUDIO</span><span class="foot-wave">● <i>●</i> ●</span><span>PCM16 · 24 KHZ</span></div>
       </section>
-      <footer class="page-foot"><span>Built on StepAudio 3 Realtime</span><span>One socket. Both directions.</span></footer>
+      <footer class="page-foot"><span>Built on the StepFun Realtime API</span><span>One socket. Both directions.</span></footer>
     </main>
   </body>
 </html>

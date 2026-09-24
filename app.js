@@ -9,13 +9,20 @@ const stageHint = $("#stage-hint");
 const conversation = $("#conversation");
 const settingsToggle = $("#settings-toggle");
 const settingsPanel = $("#settings-panel");
+const modelSelect = $("#model-select");
 const voiceSelect = $("#voice-select");
 const replyLanguageInput = $("#reply-language");
 const instructionsInput = $("#instructions");
 const prefixPaddingInput = $("#prefix-padding");
 const silenceDurationInput = $("#silence-duration");
 const energyThresholdInput = $("#energy-threshold");
-let socket, context, stream, processor, source, silentGain;
+const echoCancellationInput = $("#echo-cancellation");
+const noiseSuppressionInput = $("#noise-suppression");
+const autoGainControlInput = $("#auto-gain-control");
+const connectionOptions = [modelSelect, echoCancellationInput, noiseSuppressionInput, autoGainControlInput];
+const outputVolumeInput = $("#output-volume");
+const outputVolumeValue = $("#output-volume-value");
+let socket, context, stream, processor, source, silentGain, outputGain;
 let nextPlaybackTime = 0;
 let activeSources = new Set();
 let currentAssistantMessage;
@@ -31,6 +38,7 @@ settingsToggle.addEventListener("click", () => {
 button.addEventListener("click", () => socket || stream ? stopConversation() : startConversation());
 replyLanguageInput.addEventListener("change", applyInstructions);
 instructionsInput.addEventListener("change", applyInstructions);
+outputVolumeInput.addEventListener("input", applyPlaybackVolume);
 for (const input of [prefixPaddingInput, silenceDurationInput, energyThresholdInput]) {
   input.addEventListener("change", applyVadSettings);
 }
@@ -42,10 +50,19 @@ async function startConversation() {
   button.disabled = true;
   updateStatus("Connecting…", "busy", "Setting up your audio session", "Please allow microphone access if asked", "");
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    setConnectionOptionsDisabled(true);
+    stream = await navigator.mediaDevices.getUserMedia({ audio: {
+      channelCount: 1,
+      echoCancellation: echoCancellationInput.checked,
+      noiseSuppression: noiseSuppressionInput.checked,
+      autoGainControl: autoGainControlInput.checked,
+    } });
     context = new AudioContext({ sampleRate: RATE });
     await context.resume();
-    socket = new WebSocket(`${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/realtime`);
+    outputGain = context.createGain();
+    outputGain.connect(context.destination);
+    applyPlaybackVolume();
+    socket = new WebSocket(`${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/realtime?model=${encodeURIComponent(modelSelect.value)}`);
     socket.addEventListener("open", () => updateStatus("Connected · configuring voice", "busy", "Almost there", "Preparing live audio", ""));
     socket.addEventListener("message", handleServerMessage);
     socket.addEventListener("error", () => showError("The realtime connection failed. Check that the local server is running."));
@@ -159,7 +176,7 @@ function playPcm16(base64) {
   }
   const player = context.createBufferSource();
   player.buffer = audio;
-  player.connect(context.destination);
+  player.connect(outputGain);
   const startAt = Math.max(context.currentTime + 0.025, nextPlaybackTime);
   player.start(startAt);
   nextPlaybackTime = startAt + audio.duration;
@@ -192,6 +209,14 @@ function getInstructions() {
 }
 function applyInstructions() {
   if (sessionConfigured) send({ type: "session.update", session: { instructions: getInstructions() } });
+}
+function applyPlaybackVolume() {
+  const value = outputVolumeInput.valueAsNumber;
+  outputVolumeValue.value = `${value}%`;
+  if (outputGain && context) outputGain.gain.setTargetAtTime(value / 100, context.currentTime, 0.015);
+}
+function setConnectionOptionsDisabled(disabled) {
+  for (const input of connectionOptions) input.disabled = disabled;
 }
 function getTurnDetection() {
   const prefixPadding = readNonnegativeInteger(prefixPaddingInput);
@@ -271,11 +296,13 @@ function showError(message) {
 function cleanupAudio() {
   if (processor) processor.onaudioprocess = null;
   processor?.disconnect(); source?.disconnect(); silentGain?.disconnect();
+  outputGain?.disconnect();
   stream?.getTracks().forEach((track) => track.stop());
   stopScheduledPlayback();
   context?.close();
-  processor = source = silentGain = stream = context = undefined;
+  processor = source = silentGain = outputGain = stream = context = undefined;
   sessionConfigured = false;
+  setConnectionOptionsDisabled(false);
   voiceSelect.disabled = false;
   button.classList.remove("stop");
   $("#button-label").textContent = "Start conversation";
